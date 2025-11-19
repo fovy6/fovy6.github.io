@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gym Tracker Pro</title>
+    <title>Gym Tracker Global</title>
     <style>
         :root {
             --primary: #3b82f6;
@@ -14,7 +14,6 @@
             --text-muted: #94a3b8;
             --danger: #ef4444;
             --success: #10b981;
-            --warning: #f59e0b;
         }
 
         body {
@@ -27,6 +26,23 @@
             flex-direction: column;
             height: 100vh;
             overflow: hidden;
+        }
+
+        /* Top Bar & Language */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px 0 20px;
+        }
+        
+        .lang-select {
+            background: var(--card);
+            color: var(--text);
+            border: 1px solid #475569;
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 0.85rem;
         }
 
         /* Navigation Tabs */
@@ -57,15 +73,14 @@
             flex: 1;
             overflow-y: auto;
             padding: 20px;
-            padding-bottom: 80px; /* Space for bottom nav */
+            padding-bottom: 80px;
         }
 
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
-        h1, h2 { margin: 0 0 15px 0; }
+        h1 { margin: 10px 0 20px 0; font-size: 1.8rem; }
         h2 { font-size: 1.2rem; border-bottom: 1px solid #334155; padding-bottom: 8px; margin-top: 25px;}
-        h3 { margin: 0; }
 
         /* Input Section */
         .input-card {
@@ -127,7 +142,7 @@
             border-radius: 12px;
             padding: 15px;
             margin-top: 20px;
-            display: none; /* Hidden by default */
+            display: none; 
         }
         .current-session-box.active { display: block; }
 
@@ -151,8 +166,8 @@
             font-weight: bold;
         }
 
-        /* History Cards */
-        .workout-card {
+        /* History & Progress Items */
+        .workout-card, .progress-chart-item {
             background-color: var(--card);
             border-radius: 12px;
             padding: 15px;
@@ -174,7 +189,6 @@
             padding: 4px 0;
             font-size: 0.95rem;
         }
-        .ex-name { font-weight: 500; }
         .ex-stats { color: var(--text-muted); }
 
         .btn-delete-workout {
@@ -185,13 +199,6 @@
             padding: 5px;
         }
 
-        /* Progress Styles */
-        .progress-chart-item {
-            background: var(--card);
-            margin-bottom: 8px;
-            padding: 12px;
-            border-radius: 8px;
-        }
         .bar-container {
             background: #334155;
             height: 8px;
@@ -213,21 +220,13 @@
             padding-top: 20px;
             text-align: center;
         }
-        .btn-export {
+        .btn-export, .btn-import {
             background-color: var(--card-highlight);
             color: white;
             border: 1px solid #475569;
             padding: 10px 20px;
             border-radius: 8px;
-            margin-right: 10px;
-            font-size: 0.9rem;
-        }
-        .btn-import {
-            background-color: var(--card-highlight);
-            color: white;
-            border: 1px solid #475569;
-            padding: 10px 20px;
-            border-radius: 8px;
+            margin: 5px;
             font-size: 0.9rem;
         }
         #fileInput { display: none; }
@@ -241,66 +240,73 @@
 </head>
 <body>
 
+<div class="top-bar">
+    <div style="flex:1"></div> <!-- Spacer -->
+    <select id="languageSelect" class="lang-select" onchange="changeLanguage(this.value)">
+        <option value="en">English 🇺🇸</option>
+        <option value="es">Español 🇪🇸</option>
+        <option value="fr">Français 🇫🇷</option>
+        <option value="de">Deutsch 🇩🇪</option>
+        <option value="nl">Nederlands 🇳🇱</option>
+    </select>
+</div>
+
 <div class="content-area">
     
     <!-- === LOG TAB === -->
     <div id="tab-log" class="tab-content active">
-        <h1>Log Workout 🏋️‍♂️</h1>
+        <h1 data-i18n="log_title">Log Workout</h1>
 
-        <!-- Input Card -->
         <div class="input-card">
-            <button id="micBtn" class="mic-button">🎤 Tap to Speak</button>
+            <button id="micBtn" class="mic-button">🎤 <span data-i18n="mic_tap">Tap to Speak</span></button>
             <p id="status" style="text-align: center; color: var(--text-muted); font-size: 0.85rem; min-height: 1.2em;">
-                "Bench press 80kg for 5 reps"
+                <span data-i18n="example_phrase">"Bench press 80kg for 5 reps"</span>
             </p>
 
             <div class="form-group">
-                <label>Exercise Name</label>
-                <input type="text" id="exerciseInput" placeholder="e.g. Squat">
+                <label data-i18n="lbl_exercise">Exercise Name</label>
+                <input type="text" id="exerciseInput" placeholder="">
             </div>
 
             <div class="row">
                 <div class="form-group" style="flex: 1;">
-                    <label>Weight</label>
+                    <label data-i18n="lbl_weight">Weight</label>
                     <input type="number" id="weightInput" placeholder="0">
                 </div>
                 <div class="form-group" style="flex: 1;">
-                    <label>Reps</label>
+                    <label data-i18n="lbl_reps">Reps</label>
                     <input type="number" id="repsInput" placeholder="0">
                 </div>
             </div>
 
-            <button class="btn-add" onclick="addToCurrentSession()">+ Add to Current Workout</button>
+            <button class="btn-add" onclick="addToCurrentSession()">+ <span data-i18n="btn_add">Add to Workout</span></button>
         </div>
 
-        <!-- Current Session Staging Area -->
         <div id="currentSessionBox" class="current-session-box">
-            <h3 style="margin:0 0 10px 0; font-size: 1rem; color: var(--text-muted);">Current Session</h3>
+            <h3 style="margin:0 0 10px 0; font-size: 1rem; color: var(--text-muted);" data-i18n="session_title">Current Session</h3>
             <div id="sessionList"></div>
-            <button class="btn-finish" onclick="finishWorkout()">✅ Finish & Save Workout</button>
+            <button class="btn-finish" onclick="finishWorkout()">✅ <span data-i18n="btn_finish">Finish & Save</span></button>
         </div>
 
-        <!-- Workout History -->
-        <h2>Past Workouts</h2>
+        <h2 data-i18n="history_title">Past Workouts</h2>
         <div id="historyList"></div>
 
-        <!-- Backup Section -->
         <div class="backup-section">
-            <h3 style="font-size: 1rem; margin-bottom: 10px; color: var(--text-muted);">Data Management</h3>
-            <button class="btn-export" onclick="exportCSV()">⬇ Export CSV</button>
-            <button class="btn-import" onclick="document.getElementById('fileInput').click()">⬆ Import CSV</button>
+            <h3 style="font-size: 1rem; margin-bottom: 10px; color: var(--text-muted);" data-i18n="backup_title">Data Backup</h3>
+            <button class="btn-export" onclick="exportCSV()">⬇ <span data-i18n="btn_export">Export CSV</span></button>
+            <button class="btn-import" onclick="document.getElementById('fileInput').click()">⬆ <span data-i18n="btn_import">Import CSV</span></button>
             <input type="file" id="fileInput" accept=".csv" onchange="importCSV(this)">
-            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top:10px;">Save your data before switching phones.</p>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top:10px;" data-i18n="backup_msg">Save your data before switching phones.</p>
         </div>
     </div>
 
     <!-- === PROGRESS TAB === -->
     <div id="tab-progress" class="tab-content">
-        <h1>Progress 📈</h1>
+        <h1 data-i18n="progress_title">Progress</h1>
         <div class="form-group">
-            <label>Select Exercise</label>
+            <label data-i18n="lbl_select_ex">Select Exercise</label>
             <select id="progressSelect" onchange="renderProgressChart()">
-                <option value="">Select an exercise...</option>
+                <option value="" data-i18n="select_placeholder">Select an exercise...</option>
             </select>
         </div>
         <div id="progressResults"></div>
@@ -308,17 +314,202 @@
 
 </div>
 
-<!-- Navigation Bottom Bar -->
 <div class="nav-tabs">
-    <div class="nav-item active" onclick="switchTab('log')">Log Workout</div>
-    <div class="nav-item" onclick="switchTab('progress')">Progress</div>
+    <div class="nav-item active" onclick="switchTab('log')" data-i18n="tab_log">Log Workout</div>
+    <div class="nav-item" onclick="switchTab('progress')" data-i18n="tab_progress">Progress</div>
 </div>
 
 <script>
-    // === STATE MANAGEMENT ===
+    // === TRANSLATION ENGINE ===
+    const translations = {
+        en: {
+            code: 'en-US',
+            log_title: "Log Workout",
+            mic_tap: "Tap to Speak",
+            mic_listening: "Listening...",
+            example_phrase: "\"Bench press 80kg for 5 reps\"",
+            lbl_exercise: "Exercise Name",
+            lbl_weight: "Weight",
+            lbl_reps: "Reps",
+            btn_add: "Add to Workout",
+            session_title: "Current Session",
+            btn_finish: "Finish & Save",
+            history_title: "Past Workouts",
+            backup_title: "Data Backup",
+            btn_export: "Export CSV",
+            btn_import: "Import CSV",
+            backup_msg: "Save data before switching phones.",
+            progress_title: "Progress",
+            lbl_select_ex: "Select Exercise",
+            tab_log: "Log Workout",
+            tab_progress: "Progress",
+            alert_enter_name: "Please enter an exercise name",
+            alert_finish: "Finish and save this workout?",
+            alert_delete: "Delete this entry?",
+            import_success: "Import successful!",
+            select_placeholder: "Select an exercise...",
+            // Parsing keywords
+            keys_reps: ['reps', 'repetitions', 'rep'],
+            keys_weight: ['kg', 'lbs', 'pounds', 'kilos', 'kilograms'],
+            keys_connectors: ['for', 'with', 'at', 'x', 'by', 'of']
+        },
+        es: {
+            code: 'es-ES',
+            log_title: "Registrar Ejercicio",
+            mic_tap: "Toca para hablar",
+            mic_listening: "Escuchando...",
+            example_phrase: "\"Sentadilla con 80kg por 5 repeticiones\"",
+            lbl_exercise: "Nombre del Ejercicio",
+            lbl_weight: "Peso",
+            lbl_reps: "Repeticiones",
+            btn_add: "Añadir",
+            session_title: "Sesión Actual",
+            btn_finish: "Finalizar y Guardar",
+            history_title: "Historial",
+            backup_title: "Copia de Seguridad",
+            btn_export: "Exportar CSV",
+            btn_import: "Importar CSV",
+            backup_msg: "Guarda tus datos antes de cambiar de móvil.",
+            progress_title: "Progreso",
+            lbl_select_ex: "Seleccionar Ejercicio",
+            tab_log: "Registro",
+            tab_progress: "Progreso",
+            alert_enter_name: "Introduce un nombre de ejercicio",
+            alert_finish: "¿Finalizar y guardar entrenamiento?",
+            alert_delete: "¿Borrar esta entrada?",
+            import_success: "¡Importación exitosa!",
+            select_placeholder: "Selecciona un ejercicio...",
+            keys_reps: ['reps', 'repeticiones', 'repetición', 'rep'],
+            keys_weight: ['kg', 'kilos', 'libras', 'kilogramos'],
+            keys_connectors: ['por', 'con', 'en', 'x', 'de']
+        },
+        fr: {
+            code: 'fr-FR',
+            log_title: "Journal d'entraînement",
+            mic_tap: "Appuyez pour parler",
+            mic_listening: "Écoute...",
+            example_phrase: "\"Développé couché 80kg pour 5 répétitions\"",
+            lbl_exercise: "Exercice",
+            lbl_weight: "Poids",
+            lbl_reps: "Répétitions",
+            btn_add: "Ajouter",
+            session_title: "Séance actuelle",
+            btn_finish: "Terminer et sauvegarder",
+            history_title: "Historique",
+            backup_title: "Sauvegarde",
+            btn_export: "Exporter CSV",
+            btn_import: "Importer CSV",
+            backup_msg: "Sauvegardez vos données avant de changer de téléphone.",
+            progress_title: "Progrès",
+            lbl_select_ex: "Choisir l'exercice",
+            tab_log: "Journal",
+            tab_progress: "Progrès",
+            alert_enter_name: "Veuillez entrer un nom d'exercice",
+            alert_finish: "Terminer et sauvegarder ?",
+            alert_delete: "Supprimer cette entrée ?",
+            import_success: "Importation réussie !",
+            select_placeholder: "Choisir un exercice...",
+            keys_reps: ['reps', 'répétitions', 'répétition', 'rep'],
+            keys_weight: ['kg', 'livres', 'kilos', 'kilogrammes'],
+            keys_connectors: ['pour', 'avec', 'à', 'x', 'de']
+        },
+        de: {
+            code: 'de-DE',
+            log_title: "Trainingstagebuch",
+            mic_tap: "Tippen zum Sprechen",
+            mic_listening: "Zuhören...",
+            example_phrase: "\"Kniebeugen 80kg für 5 Wiederholungen\"",
+            lbl_exercise: "Übung",
+            lbl_weight: "Gewicht",
+            lbl_reps: "Wiederholungen",
+            btn_add: "Hinzufügen",
+            session_title: "Aktuelle Sitzung",
+            btn_finish: "Beenden & Speichern",
+            history_title: "Verlauf",
+            backup_title: "Datensicherung",
+            btn_export: "CSV Exportieren",
+            btn_import: "CSV Importieren",
+            backup_msg: "Daten vor dem Handywechsel speichern.",
+            progress_title: "Fortschritt",
+            lbl_select_ex: "Übung auswählen",
+            tab_log: "Tagebuch",
+            tab_progress: "Fortschritt",
+            alert_enter_name: "Bitte Übungsnamen eingeben",
+            alert_finish: "Training beenden und speichern?",
+            alert_delete: "Eintrag löschen?",
+            import_success: "Import erfolgreich!",
+            select_placeholder: "Übung auswählen...",
+            keys_reps: ['reps', 'wiederholungen', 'wdh'],
+            keys_weight: ['kg', 'pfund', 'kilos', 'kilogramm'],
+            keys_connectors: ['für', 'mit', 'bei', 'x', 'von']
+        },
+        nl: {
+            code: 'nl-NL',
+            log_title: "Workout Log",
+            mic_tap: "Tik om te spreken",
+            mic_listening: "Luisteren...",
+            example_phrase: "\"Bankdrukken 80kg voor 5 herhalingen\"",
+            lbl_exercise: "Oefening",
+            lbl_weight: "Gewicht",
+            lbl_reps: "Herhalingen",
+            btn_add: "Toevoegen",
+            session_title: "Huidige Sessie",
+            btn_finish: "Afronden & Opslaan",
+            history_title: "Geschiedenis",
+            backup_title: "Back-up",
+            btn_export: "Exporteer CSV",
+            btn_import: "Importeer CSV",
+            backup_msg: "Sla je gegevens op voordat je van telefoon wisselt.",
+            progress_title: "Voortgang",
+            lbl_select_ex: "Selecteer Oefening",
+            tab_log: "Logboek",
+            tab_progress: "Voortgang",
+            alert_enter_name: "Voer een oefening naam in",
+            alert_finish: "Training opslaan?",
+            alert_delete: "Verwijderen?",
+            import_success: "Import geslaagd!",
+            select_placeholder: "Selecteer een oefening...",
+            keys_reps: ['reps', 'herhalingen', 'keer', 'maal'],
+            keys_weight: ['kg', 'kilo', 'kilogram'],
+            keys_connectors: ['voor', 'met', 'op', 'x', 'van']
+        }
+    };
+
+    let currentLang = localStorage.getItem('gymLang') || 'en';
     let currentSession = [];
-    
-    // --- Voice Recognition Setup ---
+
+    // === UI & INIT ===
+    function changeLanguage(lang) {
+        currentLang = lang;
+        localStorage.setItem('gymLang', lang);
+        
+        // Update HTML Elements
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (translations[lang][key]) {
+                el.innerText = translations[lang][key];
+            }
+        });
+
+        // Update Placeholders
+        document.getElementById('exerciseInput').placeholder = translations[lang].lbl_exercise;
+        
+        // Update Dropdown
+        document.getElementById('languageSelect').value = lang;
+        
+        // Update Mic Language
+        if (recognition) recognition.lang = translations[lang].code;
+
+        // Refresh dynamic content
+        updateProgressDropdown();
+        renderHistory();
+    }
+
+    // Initialize
+    changeLanguage(currentLang);
+
+
+    // === SPEECH RECOGNITION ===
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const micBtn = document.getElementById('micBtn');
     const statusText = document.getElementById('status');
@@ -327,18 +518,20 @@
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
         recognition.continuous = false;
-        recognition.lang = 'en-US';
+        recognition.interimResults = false;
         
         micBtn.addEventListener('click', toggleMic);
 
         recognition.onstart = () => {
             micBtn.classList.add('listening');
-            micBtn.innerHTML = '🛑 Listening...';
+            const icon = "🛑 " + translations[currentLang].mic_listening;
+            // We manually update button text inside the span
+            micBtn.querySelector('span').innerText = translations[currentLang].mic_listening;
         };
 
         recognition.onend = () => {
             micBtn.classList.remove('listening');
-            micBtn.innerHTML = '🎤 Tap to Speak';
+            micBtn.querySelector('span').innerText = translations[currentLang].mic_tap;
         };
 
         recognition.onresult = (event) => {
@@ -347,32 +540,46 @@
         };
     } else {
         micBtn.style.display = 'none';
-        statusText.innerText = "Voice not supported. Type manually.";
+        statusText.innerText = "Voice not supported.";
     }
 
     function toggleMic() {
         if (micBtn.classList.contains('listening')) recognition.stop();
-        else recognition.start();
+        else {
+            recognition.lang = translations[currentLang].code;
+            recognition.start();
+        }
     }
 
-    // === PARSING LOGIC ===
+    // === MULTI-LINGUAL PARSING LOGIC ===
     function parseAndFill(text) {
         let cleanText = text.toLowerCase();
         let weight = null;
         let reps = null;
         
-        const repsMatch = cleanText.match(/(\d+)\s*(reps|repetitions)/);
+        const t = translations[currentLang];
+
+        // 1. Dynamic Regex for Reps (e.g., "5 reps", "5 herhalingen")
+        const repWords = t.keys_reps.join('|');
+        const repRegex = new RegExp(`(\\d+)\\s*(${repWords})`, 'i');
+        const repsMatch = cleanText.match(repRegex);
+        
         if (repsMatch) {
             reps = repsMatch[1];
             cleanText = cleanText.replace(repsMatch[0], ''); 
         }
 
-        const weightMatch = cleanText.match(/(\d+)\s*(kg|kgs|lbs|pounds|kilos)/);
+        // 2. Dynamic Regex for Weight (e.g., "80 kg", "80 kilos")
+        const weightWords = t.keys_weight.join('|');
+        const weightRegex = new RegExp(`(\\d+)\\s*(${weightWords})`, 'i');
+        const weightMatch = cleanText.match(weightRegex);
+
         if (weightMatch) {
             weight = weightMatch[1];
             cleanText = cleanText.replace(weightMatch[0], '');
         }
 
+        // 3. Heuristic for loose numbers
         const remainingNumbers = cleanText.match(/(\d+(\.\d+)?)/g);
         if (remainingNumbers) {
             if (!weight && !reps && remainingNumbers.length >= 2) {
@@ -381,21 +588,23 @@
                 weight = Math.max(n1, n2);
                 reps = Math.min(n1, n2);
                 cleanText = cleanText.replace(remainingNumbers[0], '').replace(remainingNumbers[1], '');
-            } 
-            else if (!weight && remainingNumbers.length > 0) {
+            } else if (!weight && remainingNumbers.length > 0) {
                 weight = remainingNumbers[0];
                 cleanText = cleanText.replace(weight, '');
             }
-            else if (!reps && remainingNumbers.length > 0) {
-                reps = remainingNumbers[0];
-                cleanText = cleanText.replace(reps, '');
-            }
         }
 
+        // 4. Clean up connector words (localized)
         let exerciseName = cleanText;
-        const badWords = [/\bfor\b/g, /\bwith\b/g, /\bat\b/g, /\bx\b/g, /\bby\b/g];
-        badWords.forEach(regex => { exerciseName = exerciseName.replace(regex, ''); });
-        exerciseName = exerciseName.replace(/[^a-zA-Z\s]/g, '').trim();
+        const connectors = t.keys_connectors;
+        connectors.forEach(word => {
+            // Remove whole words only
+            const regex = new RegExp(`\\b${word}\\b`, 'gi');
+            exerciseName = exerciseName.replace(regex, '');
+        });
+
+        // Cleanup special chars
+        exerciseName = exerciseName.replace(/[^a-zA-Z\u00C0-\u00FF\s]/g, '').trim(); // Allow accents
         if(exerciseName.length > 0) {
             exerciseName = exerciseName.charAt(0).toUpperCase() + exerciseName.slice(1);
         }
@@ -404,7 +613,7 @@
         if (weight) document.getElementById('weightInput').value = weight;
         if (reps) document.getElementById('repsInput').value = reps;
         
-        statusText.innerText = `Heard: "${text}"`;
+        statusText.innerText = `"${text}"`;
     }
 
     // === WORKOUT LOGIC ===
@@ -414,20 +623,17 @@
         const rInput = document.getElementById('repsInput');
 
         const name = exInput.value.trim();
-        if (!name) return alert("Enter an exercise name");
+        if (!name) return alert(translations[currentLang].alert_enter_name);
 
-        const exercise = {
-            id: Date.now() + Math.random(), // Ensure unique ID
+        currentSession.push({
+            id: Date.now() + Math.random(),
             name: name,
             weight: wInput.value || 0,
             reps: rInput.value || 0
-        };
+        });
 
-        currentSession.push(exercise);
-        
         exInput.value = ''; wInput.value = ''; rInput.value = '';
         exInput.focus();
-
         renderSession();
     }
 
@@ -456,16 +662,14 @@
 
     function finishWorkout() {
         if (currentSession.length === 0) return;
-        if (!confirm("Finish and save this workout?")) return;
+        if (!confirm(translations[currentLang].alert_finish)) return;
 
-        const workout = {
+        let allWorkouts = JSON.parse(localStorage.getItem('gymWorkouts') || '[]');
+        allWorkouts.unshift({
             id: Date.now(),
             date: new Date().toISOString(),
             exercises: currentSession
-        };
-
-        let allWorkouts = JSON.parse(localStorage.getItem('gymWorkouts') || '[]');
-        allWorkouts.unshift(workout);
+        });
         localStorage.setItem('gymWorkouts', JSON.stringify(allWorkouts));
 
         currentSession = [];
@@ -475,7 +679,7 @@
     }
 
     function deleteWorkout(id) {
-        if(!confirm("Delete this entire workout log?")) return;
+        if(!confirm(translations[currentLang].alert_delete)) return;
         let allWorkouts = JSON.parse(localStorage.getItem('gymWorkouts') || '[]');
         allWorkouts = allWorkouts.filter(w => w.id !== id);
         localStorage.setItem('gymWorkouts', JSON.stringify(allWorkouts));
@@ -515,29 +719,18 @@
         }).join('');
     }
 
-    // === EXPORT / IMPORT LOGIC ===
-    
+    // === DATA EXPORT/IMPORT ===
     function exportCSV() {
         const allWorkouts = JSON.parse(localStorage.getItem('gymWorkouts') || '[]');
-        if (allWorkouts.length === 0) {
-            alert("No data to export.");
-            return;
-        }
-
-        // CSV Header
-        let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "WorkoutID,Date,Exercise Name,Weight,Reps\n";
-
-        // CSV Rows
+        if (allWorkouts.length === 0) return alert("No data");
+        
+        let csvContent = "data:text/csv;charset=utf-8,WorkoutID,Date,Exercise Name,Weight,Reps\n";
         allWorkouts.forEach(w => {
             w.exercises.forEach(e => {
-                // Wrap strings in quotes to handle commas in names
-                const row = `${w.id},"${w.date}","${e.name}",${e.weight},${e.reps}`;
-                csvContent += row + "\n";
+                csvContent += `${w.id},"${w.date}","${e.name}",${e.weight},${e.reps}\n`;
             });
         });
 
-        // Download Link
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
@@ -554,109 +747,68 @@
         const reader = new FileReader();
         reader.onload = function(e) {
             const text = e.target.result;
-            const rows = text.split("\n");
-            
-            // Skip header
-            const dataRows = rows.slice(1);
-            
-            const newWorkoutsMap = {};
+            const rows = text.split("\n").slice(1);
+            const newMap = {};
 
-            dataRows.forEach(row => {
+            rows.forEach(row => {
                 if (!row.trim()) return;
-
-                // Regex to split by comma, ignoring commas inside quotes
-                // Explanation: Match a comma only if it's followed by an even number of quotes
                 const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, '').trim());
-                
                 if (cols.length < 5) return;
 
                 const wId = parseInt(cols[0]);
-                const wDate = cols[1];
-                const exName = cols[2];
-                const exWeight = cols[3];
-                const exReps = cols[4];
-
-                if (!newWorkoutsMap[wId]) {
-                    newWorkoutsMap[wId] = {
-                        id: wId,
-                        date: wDate,
-                        exercises: []
-                    };
-                }
-
-                newWorkoutsMap[wId].exercises.push({
-                    id: Date.now() + Math.random(), // Generate new internal ID for the exercise
-                    name: exName,
-                    weight: exWeight,
-                    reps: exReps
+                if (!newMap[wId]) newMap[wId] = { id: wId, date: cols[1], exercises: [] };
+                newMap[wId].exercises.push({
+                    id: Date.now() + Math.random(),
+                    name: cols[2],
+                    weight: cols[3],
+                    reps: cols[4]
                 });
             });
 
-            // Convert map to array
-            const importedWorkouts = Object.values(newWorkoutsMap);
-
-            if (importedWorkouts.length === 0) {
-                alert("No valid data found in CSV.");
-                return;
-            }
-
-            // Merge logic: Add only if ID doesn't exist
             let currentWorkouts = JSON.parse(localStorage.getItem('gymWorkouts') || '[]');
             const currentIds = new Set(currentWorkouts.map(w => w.id));
             
-            let addedCount = 0;
-            importedWorkouts.forEach(w => {
-                if (!currentIds.has(w.id)) {
-                    currentWorkouts.push(w);
-                    addedCount++;
-                }
+            Object.values(newMap).forEach(w => {
+                if (!currentIds.has(w.id)) currentWorkouts.push(w);
             });
 
-            // Sort by date (newest first)
             currentWorkouts.sort((a, b) => new Date(b.date) - new Date(a.date));
-
             localStorage.setItem('gymWorkouts', JSON.stringify(currentWorkouts));
             
-            alert(`Import successful! Added ${addedCount} new workouts.`);
+            alert(translations[currentLang].import_success);
             renderHistory();
             updateProgressDropdown();
         };
-        
         reader.readAsText(file);
-        // Reset input so same file can be selected again if needed
-        input.value = ''; 
+        input.value = '';
     }
 
-    // === PROGRESS LOGIC ===
+    // === PROGRESS ===
     function updateProgressDropdown() {
         const allWorkouts = JSON.parse(localStorage.getItem('gymWorkouts') || '[]');
         const select = document.getElementById('progressSelect');
         const names = new Set();
         allWorkouts.forEach(w => w.exercises.forEach(e => names.add(e.name.trim())));
-        const currentVal = select.value;
-
-        select.innerHTML = '<option value="">Select an exercise...</option>';
+        
+        const savedVal = select.value;
+        select.innerHTML = `<option value="">${translations[currentLang].select_placeholder}</option>`;
         Array.from(names).sort().forEach(name => {
-            const option = document.createElement('option');
-            option.value = name;
-            option.innerText = name;
-            select.appendChild(option);
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.innerText = name;
+            select.appendChild(opt);
         });
-
-        if (names.has(currentVal)) select.value = currentVal;
+        if (names.has(savedVal)) select.value = savedVal;
     }
 
     function renderProgressChart() {
         const name = document.getElementById('progressSelect').value;
         const resultsDiv = document.getElementById('progressResults');
-        const allWorkouts = JSON.parse(localStorage.getItem('gymWorkouts') || '[]');
-        
-        if (!name) {
-            resultsDiv.innerHTML = '';
-            return;
-        }
+        if (!name) { resultsDiv.innerHTML = ''; return; }
 
+        const allWorkouts = JSON.parse(localStorage.getItem('gymWorkouts') || '[]');
         let dataPoints = [];
+        
         allWorkouts.forEach(w => {
             w.exercises.forEach(e => {
                 if (e.name.trim() === name) {
@@ -666,22 +818,17 @@
         });
 
         dataPoints.sort((a, b) => a.date - b.date);
-
-        if (dataPoints.length === 0) {
-            resultsDiv.innerHTML = '<p>No data found.</p>';
-            return;
-        }
+        if (dataPoints.length === 0) { resultsDiv.innerHTML = ''; return; }
 
         const maxWeight = Math.max(...dataPoints.map(d => d.weight)) || 1;
 
         resultsDiv.innerHTML = dataPoints.map(d => {
-            const dateStr = d.date.toLocaleDateString();
             const widthPercentage = (d.weight / maxWeight) * 100;
             return `
                 <div class="progress-chart-item">
                     <div style="display:flex; justify-content:space-between;">
-                        <span style="font-size:0.85rem; color:var(--text-muted);">${dateStr}</span>
-                        <span style="font-weight:bold;">${d.weight}kg <span style="font-weight:normal; font-size:0.85rem;">x${d.reps}</span></span>
+                        <span style="font-size:0.85rem; color:var(--text-muted);">${d.date.toLocaleDateString()}</span>
+                        <span style="font-weight:bold;">${d.weight}kg <span style="font-size:0.85rem; font-weight:normal;">x${d.reps}</span></span>
                     </div>
                     <div class="bar-container">
                         <div class="bar-fill" style="width: ${widthPercentage}%;"></div>
@@ -696,16 +843,12 @@
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
         document.getElementById('tab-' + tabName).classList.add('active');
-        const navIndex = tabName === 'log' ? 0 : 1;
-        document.querySelectorAll('.nav-item')[navIndex].classList.add('active');
-        if (tabName === 'progress') updateProgressDropdown();
+        
+        const idx = tabName === 'log' ? 0 : 1;
+        document.querySelectorAll('.nav-item')[idx].classList.add('active');
+        if(tabName === 'progress') updateProgressDropdown();
     }
 
-    // Initial Load
-    renderHistory();
-    updateProgressDropdown();
-
 </script>
-
 </body>
 </html>
