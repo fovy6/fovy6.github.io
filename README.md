@@ -14,6 +14,7 @@
             --text-muted: #94a3b8;
             --danger: #ef4444;
             --success: #10b981;
+            --warning: #f59e0b;
         }
 
         body {
@@ -64,6 +65,7 @@
 
         h1, h2 { margin: 0 0 15px 0; }
         h2 { font-size: 1.2rem; border-bottom: 1px solid #334155; padding-bottom: 8px; margin-top: 25px;}
+        h3 { margin: 0; }
 
         /* Input Section */
         .input-card {
@@ -204,6 +206,32 @@
             transition: width 0.5s ease;
         }
 
+        /* Backup Section */
+        .backup-section {
+            margin-top: 40px;
+            border-top: 1px solid #334155;
+            padding-top: 20px;
+            text-align: center;
+        }
+        .btn-export {
+            background-color: var(--card-highlight);
+            color: white;
+            border: 1px solid #475569;
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin-right: 10px;
+            font-size: 0.9rem;
+        }
+        .btn-import {
+            background-color: var(--card-highlight);
+            color: white;
+            border: 1px solid #475569;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        #fileInput { display: none; }
+
         @keyframes pulse {
             0% { transform: scale(1); }
             50% { transform: scale(1.02); }
@@ -255,6 +283,15 @@
         <!-- Workout History -->
         <h2>Past Workouts</h2>
         <div id="historyList"></div>
+
+        <!-- Backup Section -->
+        <div class="backup-section">
+            <h3 style="font-size: 1rem; margin-bottom: 10px; color: var(--text-muted);">Data Management</h3>
+            <button class="btn-export" onclick="exportCSV()">⬇ Export CSV</button>
+            <button class="btn-import" onclick="document.getElementById('fileInput').click()">⬆ Import CSV</button>
+            <input type="file" id="fileInput" accept=".csv" onchange="importCSV(this)">
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top:10px;">Save your data before switching phones.</p>
+        </div>
     </div>
 
     <!-- === PROGRESS TAB === -->
@@ -318,87 +355,59 @@
         else recognition.start();
     }
 
-    // === NEW & IMPROVED PARSING LOGIC ===
+    // === PARSING LOGIC ===
     function parseAndFill(text) {
         let cleanText = text.toLowerCase();
         let weight = null;
         let reps = null;
         
-        // 1. Extract numbers that have explicit units (kg, lbs, reps)
-        
-        // Match explicit reps (e.g., "5 reps", "10 repetitions")
         const repsMatch = cleanText.match(/(\d+)\s*(reps|repetitions)/);
         if (repsMatch) {
             reps = repsMatch[1];
-            // Remove the matched part from text so it doesn't end up in title
             cleanText = cleanText.replace(repsMatch[0], ''); 
         }
 
-        // Match explicit weight (e.g., "100 kg", "45 lbs")
         const weightMatch = cleanText.match(/(\d+)\s*(kg|kgs|lbs|pounds|kilos)/);
         if (weightMatch) {
             weight = weightMatch[1];
             cleanText = cleanText.replace(weightMatch[0], '');
         }
 
-        // 2. Handle implicit numbers (e.g., "Bench press 100 for 5" or "Squat 100 5")
-        // If we are still missing weight OR reps, look for remaining loose numbers
         const remainingNumbers = cleanText.match(/(\d+(\.\d+)?)/g);
-
         if (remainingNumbers) {
             if (!weight && !reps && remainingNumbers.length >= 2) {
-                // If we found two loose numbers, we assume:
-                // Larger number = Weight
-                // Smaller number = Reps
                 const n1 = parseFloat(remainingNumbers[0]);
                 const n2 = parseFloat(remainingNumbers[1]);
-                
                 weight = Math.max(n1, n2);
                 reps = Math.min(n1, n2);
-                
-                // Remove both from title
                 cleanText = cleanText.replace(remainingNumbers[0], '').replace(remainingNumbers[1], '');
             } 
             else if (!weight && remainingNumbers.length > 0) {
-                // If only one number left and we need weight -> assign to weight
                 weight = remainingNumbers[0];
                 cleanText = cleanText.replace(weight, '');
             }
             else if (!reps && remainingNumbers.length > 0) {
-                // If only one number left and we need reps -> assign to reps
                 reps = remainingNumbers[0];
                 cleanText = cleanText.replace(reps, '');
             }
         }
 
-        // 3. Final Cleanup of the Name
-        // Remove common connector words that might remain like " for ", " with ", " at ", " x "
         let exerciseName = cleanText;
         const badWords = [/\bfor\b/g, /\bwith\b/g, /\bat\b/g, /\bx\b/g, /\bby\b/g];
-        
-        badWords.forEach(regex => {
-            exerciseName = exerciseName.replace(regex, '');
-        });
-
-        // Remove loose symbols and whitespace
+        badWords.forEach(regex => { exerciseName = exerciseName.replace(regex, ''); });
         exerciseName = exerciseName.replace(/[^a-zA-Z\s]/g, '').trim();
-        
-        // Capitalize
         if(exerciseName.length > 0) {
             exerciseName = exerciseName.charAt(0).toUpperCase() + exerciseName.slice(1);
         }
 
-        // 4. Update Inputs
         if (exerciseName) document.getElementById('exerciseInput').value = exerciseName;
         if (weight) document.getElementById('weightInput').value = weight;
         if (reps) document.getElementById('repsInput').value = reps;
         
-        // Feedback to user
         statusText.innerText = `Heard: "${text}"`;
     }
 
     // === WORKOUT LOGIC ===
-
     function addToCurrentSession() {
         const exInput = document.getElementById('exerciseInput');
         const wInput = document.getElementById('weightInput');
@@ -408,7 +417,7 @@
         if (!name) return alert("Enter an exercise name");
 
         const exercise = {
-            id: Date.now(),
+            id: Date.now() + Math.random(), // Ensure unique ID
             name: name,
             weight: wInput.value || 0,
             reps: rInput.value || 0
@@ -416,7 +425,6 @@
 
         currentSession.push(exercise);
         
-        // Clear inputs
         exInput.value = ''; wInput.value = ''; rInput.value = '';
         exInput.focus();
 
@@ -507,18 +515,124 @@
         }).join('');
     }
 
-    // === PROGRESS LOGIC ===
+    // === EXPORT / IMPORT LOGIC ===
+    
+    function exportCSV() {
+        const allWorkouts = JSON.parse(localStorage.getItem('gymWorkouts') || '[]');
+        if (allWorkouts.length === 0) {
+            alert("No data to export.");
+            return;
+        }
 
+        // CSV Header
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "WorkoutID,Date,Exercise Name,Weight,Reps\n";
+
+        // CSV Rows
+        allWorkouts.forEach(w => {
+            w.exercises.forEach(e => {
+                // Wrap strings in quotes to handle commas in names
+                const row = `${w.id},"${w.date}","${e.name}",${e.weight},${e.reps}`;
+                csvContent += row + "\n";
+            });
+        });
+
+        // Download Link
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "gym_history.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function importCSV(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            const rows = text.split("\n");
+            
+            // Skip header
+            const dataRows = rows.slice(1);
+            
+            const newWorkoutsMap = {};
+
+            dataRows.forEach(row => {
+                if (!row.trim()) return;
+
+                // Regex to split by comma, ignoring commas inside quotes
+                // Explanation: Match a comma only if it's followed by an even number of quotes
+                const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, '').trim());
+                
+                if (cols.length < 5) return;
+
+                const wId = parseInt(cols[0]);
+                const wDate = cols[1];
+                const exName = cols[2];
+                const exWeight = cols[3];
+                const exReps = cols[4];
+
+                if (!newWorkoutsMap[wId]) {
+                    newWorkoutsMap[wId] = {
+                        id: wId,
+                        date: wDate,
+                        exercises: []
+                    };
+                }
+
+                newWorkoutsMap[wId].exercises.push({
+                    id: Date.now() + Math.random(), // Generate new internal ID for the exercise
+                    name: exName,
+                    weight: exWeight,
+                    reps: exReps
+                });
+            });
+
+            // Convert map to array
+            const importedWorkouts = Object.values(newWorkoutsMap);
+
+            if (importedWorkouts.length === 0) {
+                alert("No valid data found in CSV.");
+                return;
+            }
+
+            // Merge logic: Add only if ID doesn't exist
+            let currentWorkouts = JSON.parse(localStorage.getItem('gymWorkouts') || '[]');
+            const currentIds = new Set(currentWorkouts.map(w => w.id));
+            
+            let addedCount = 0;
+            importedWorkouts.forEach(w => {
+                if (!currentIds.has(w.id)) {
+                    currentWorkouts.push(w);
+                    addedCount++;
+                }
+            });
+
+            // Sort by date (newest first)
+            currentWorkouts.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            localStorage.setItem('gymWorkouts', JSON.stringify(currentWorkouts));
+            
+            alert(`Import successful! Added ${addedCount} new workouts.`);
+            renderHistory();
+            updateProgressDropdown();
+        };
+        
+        reader.readAsText(file);
+        // Reset input so same file can be selected again if needed
+        input.value = ''; 
+    }
+
+    // === PROGRESS LOGIC ===
     function updateProgressDropdown() {
         const allWorkouts = JSON.parse(localStorage.getItem('gymWorkouts') || '[]');
         const select = document.getElementById('progressSelect');
-        
-        // Extract unique exercise names
         const names = new Set();
-        allWorkouts.forEach(w => {
-            w.exercises.forEach(e => names.add(e.name.trim()));
-        });
-
+        allWorkouts.forEach(w => w.exercises.forEach(e => names.add(e.name.trim())));
         const currentVal = select.value;
 
         select.innerHTML = '<option value="">Select an exercise...</option>';
@@ -546,11 +660,7 @@
         allWorkouts.forEach(w => {
             w.exercises.forEach(e => {
                 if (e.name.trim() === name) {
-                    dataPoints.push({
-                        date: new Date(w.date),
-                        weight: parseFloat(e.weight),
-                        reps: e.reps
-                    });
+                    dataPoints.push({ date: new Date(w.date), weight: parseFloat(e.weight), reps: e.reps });
                 }
             });
         });
@@ -567,7 +677,6 @@
         resultsDiv.innerHTML = dataPoints.map(d => {
             const dateStr = d.date.toLocaleDateString();
             const widthPercentage = (d.weight / maxWeight) * 100;
-            
             return `
                 <div class="progress-chart-item">
                     <div style="display:flex; justify-content:space-between;">
@@ -586,15 +695,10 @@
     function switchTab(tabName) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-        
         document.getElementById('tab-' + tabName).classList.add('active');
-        
         const navIndex = tabName === 'log' ? 0 : 1;
         document.querySelectorAll('.nav-item')[navIndex].classList.add('active');
-
-        if (tabName === 'progress') {
-            updateProgressDropdown();
-        }
+        if (tabName === 'progress') updateProgressDropdown();
     }
 
     // Initial Load
