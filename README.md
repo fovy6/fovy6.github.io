@@ -318,43 +318,83 @@
         else recognition.start();
     }
 
+    // === NEW & IMPROVED PARSING LOGIC ===
     function parseAndFill(text) {
-        text = text.toLowerCase();
+        let cleanText = text.toLowerCase();
         let weight = null;
         let reps = null;
-        let exercise = text;
-
-        // Parsing Logic
-        const numbers = text.match(/(\d+(\.\d+)?)/g);
-        if (numbers) {
-            const repsMatch = text.match(/(\d+)\s*(reps|repetitions)/);
-            if (repsMatch) {
-                reps = repsMatch[1];
-                exercise = exercise.replace(repsMatch[0], '');
-            }
-            const weightMatch = text.match(/(\d+)\s*(kg|kgs|lbs|pounds|kilos)/);
-            if (weightMatch) {
-                weight = weightMatch[1];
-                exercise = exercise.replace(weightMatch[0], '');
-            }
-            
-            // Fallback heuristic
-            if (!weight && !reps) {
-                const remNums = exercise.match(/(\d+)/g);
-                if (remNums && remNums.length >= 2) {
-                    weight = Math.max(remNums[0], remNums[1]);
-                    reps = Math.min(remNums[0], remNums[1]);
-                } else if (remNums) {
-                    weight = remNums[0];
-                }
-            }
-            exercise = exercise.replace(/[0-9]/g, '').replace(/\bfor\b/g, '').replace(/\bwith\b/g, '').trim();
-            exercise = exercise.charAt(0).toUpperCase() + exercise.slice(1);
+        
+        // 1. Extract numbers that have explicit units (kg, lbs, reps)
+        
+        // Match explicit reps (e.g., "5 reps", "10 repetitions")
+        const repsMatch = cleanText.match(/(\d+)\s*(reps|repetitions)/);
+        if (repsMatch) {
+            reps = repsMatch[1];
+            // Remove the matched part from text so it doesn't end up in title
+            cleanText = cleanText.replace(repsMatch[0], ''); 
         }
 
-        document.getElementById('exerciseInput').value = exercise;
+        // Match explicit weight (e.g., "100 kg", "45 lbs")
+        const weightMatch = cleanText.match(/(\d+)\s*(kg|kgs|lbs|pounds|kilos)/);
+        if (weightMatch) {
+            weight = weightMatch[1];
+            cleanText = cleanText.replace(weightMatch[0], '');
+        }
+
+        // 2. Handle implicit numbers (e.g., "Bench press 100 for 5" or "Squat 100 5")
+        // If we are still missing weight OR reps, look for remaining loose numbers
+        const remainingNumbers = cleanText.match(/(\d+(\.\d+)?)/g);
+
+        if (remainingNumbers) {
+            if (!weight && !reps && remainingNumbers.length >= 2) {
+                // If we found two loose numbers, we assume:
+                // Larger number = Weight
+                // Smaller number = Reps
+                const n1 = parseFloat(remainingNumbers[0]);
+                const n2 = parseFloat(remainingNumbers[1]);
+                
+                weight = Math.max(n1, n2);
+                reps = Math.min(n1, n2);
+                
+                // Remove both from title
+                cleanText = cleanText.replace(remainingNumbers[0], '').replace(remainingNumbers[1], '');
+            } 
+            else if (!weight && remainingNumbers.length > 0) {
+                // If only one number left and we need weight -> assign to weight
+                weight = remainingNumbers[0];
+                cleanText = cleanText.replace(weight, '');
+            }
+            else if (!reps && remainingNumbers.length > 0) {
+                // If only one number left and we need reps -> assign to reps
+                reps = remainingNumbers[0];
+                cleanText = cleanText.replace(reps, '');
+            }
+        }
+
+        // 3. Final Cleanup of the Name
+        // Remove common connector words that might remain like " for ", " with ", " at ", " x "
+        let exerciseName = cleanText;
+        const badWords = [/\bfor\b/g, /\bwith\b/g, /\bat\b/g, /\bx\b/g, /\bby\b/g];
+        
+        badWords.forEach(regex => {
+            exerciseName = exerciseName.replace(regex, '');
+        });
+
+        // Remove loose symbols and whitespace
+        exerciseName = exerciseName.replace(/[^a-zA-Z\s]/g, '').trim();
+        
+        // Capitalize
+        if(exerciseName.length > 0) {
+            exerciseName = exerciseName.charAt(0).toUpperCase() + exerciseName.slice(1);
+        }
+
+        // 4. Update Inputs
+        if (exerciseName) document.getElementById('exerciseInput').value = exerciseName;
         if (weight) document.getElementById('weightInput').value = weight;
         if (reps) document.getElementById('repsInput').value = reps;
+        
+        // Feedback to user
+        statusText.innerText = `Heard: "${text}"`;
     }
 
     // === WORKOUT LOGIC ===
@@ -412,7 +452,7 @@
 
         const workout = {
             id: Date.now(),
-            date: new Date().toISOString(), // Stored standard, formatted later
+            date: new Date().toISOString(),
             exercises: currentSession
         };
 
@@ -432,7 +472,7 @@
         allWorkouts = allWorkouts.filter(w => w.id !== id);
         localStorage.setItem('gymWorkouts', JSON.stringify(allWorkouts));
         renderHistory();
-        updateProgressDropdown(); // Refresh dropdown in case exercises are gone
+        updateProgressDropdown();
     }
 
     function renderHistory() {
@@ -479,7 +519,6 @@
             w.exercises.forEach(e => names.add(e.name.trim()));
         });
 
-        // Save current selection
         const currentVal = select.value;
 
         select.innerHTML = '<option value="">Select an exercise...</option>';
@@ -490,7 +529,6 @@
             select.appendChild(option);
         });
 
-        // Restore selection if it still exists
         if (names.has(currentVal)) select.value = currentVal;
     }
 
@@ -504,7 +542,6 @@
             return;
         }
 
-        // Gather all data points for this exercise
         let dataPoints = [];
         allWorkouts.forEach(w => {
             w.exercises.forEach(e => {
@@ -518,7 +555,6 @@
             });
         });
 
-        // Sort by date (oldest first for graph)
         dataPoints.sort((a, b) => a.date - b.date);
 
         if (dataPoints.length === 0) {
@@ -526,8 +562,7 @@
             return;
         }
 
-        // Find max weight for bar scaling
-        const maxWeight = Math.max(...dataPoints.map(d => d.weight));
+        const maxWeight = Math.max(...dataPoints.map(d => d.weight)) || 1;
 
         resultsDiv.innerHTML = dataPoints.map(d => {
             const dateStr = d.date.toLocaleDateString();
@@ -544,7 +579,7 @@
                     </div>
                 </div>
             `;
-        }).reverse().join(''); // Show newest first in list, visually better
+        }).reverse().join('');
     }
 
     // === TABS ===
@@ -554,7 +589,6 @@
         
         document.getElementById('tab-' + tabName).classList.add('active');
         
-        // Highlight nav
         const navIndex = tabName === 'log' ? 0 : 1;
         document.querySelectorAll('.nav-item')[navIndex].classList.add('active');
 
