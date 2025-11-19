@@ -487,15 +487,7 @@
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.getAttribute('data-i18n');
             if (translations[lang][key]) {
-                // Special handling for mic button to preserve the span
-                if (el.id === 'micBtn') {
-                    const span = el.querySelector('span');
-                    if (span) {
-                        span.innerText = translations[lang][key];
-                    }
-                } else {
-                    el.innerText = translations[lang][key];
-                }
+                el.innerText = translations[lang][key];
             }
         });
 
@@ -505,17 +497,17 @@
         // Update Dropdown
         document.getElementById('languageSelect').value = lang;
         
-        // Update Mic Language
-        if (recognition) recognition.lang = translations[lang].code;
+        // Update Mic Language - only if recognition exists
+        if (typeof recognition !== 'undefined' && recognition) {
+            recognition.lang = translations[lang].code;
+        }
 
         // Refresh dynamic content
         updateProgressDropdown();
         renderHistory();
     }
-
-    // Initialize
-    changeLanguage(currentLang);
-
+    // Don't call changeLanguage here - remove this line:
+    // changeLanguage(currentLang);
 
     // === SPEECH RECOGNITION ===
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -532,13 +524,19 @@
 
         recognition.onstart = () => {
             micBtn.classList.add('listening');
-            // We manually update button text inside the span
-            micBtn.querySelector('span').innerText = translations[currentLang].mic_listening;
+            // Make sure span exists before updating
+            const span = micBtn.querySelector('span');
+            if (span) {
+                span.innerText = translations[currentLang].mic_listening;
+            }
         };
 
         recognition.onend = () => {
             micBtn.classList.remove('listening');
-            micBtn.querySelector('span').innerText = translations[currentLang].mic_tap;
+            const span = micBtn.querySelector('span');
+            if (span) {
+                span.innerText = translations[currentLang].mic_tap;
+            }
         };
 
         recognition.onresult = (event) => {
@@ -549,6 +547,9 @@
         micBtn.style.display = 'none';
         statusText.innerText = "Voice not supported.";
     }
+
+    // Initialize language AFTER recognition is set up
+    changeLanguage(currentLang);
 
     function toggleMic() {
         if (micBtn.classList.contains('listening')) recognition.stop();
@@ -566,56 +567,96 @@
         
         const t = translations[currentLang];
 
-        // 1. Dynamic Regex for Reps (e.g., "5 reps", "5 herhalingen")
+        // Convert written numbers to digits (for common small numbers)
+        const numberWords = {
+            'en': {'one':1,'two':2,'three':3,'four':4,'five':5,'six':6,'seven':7,'eight':8,'nine':9,'ten':10,'eleven':11,'twelve':12,'fifteen':15,'twenty':20,'thirty':30},
+            'nl': {'een':1,'twee':2,'drie':3,'vier':4,'vijf':5,'zes':6,'zeven':7,'acht':8,'negen':9,'tien':10,'elf':11,'twaalf':12,'vijftien':15,'twintig':20,'dertig':30},
+            'es': {'uno':1,'dos':2,'tres':3,'cuatro':4,'cinco':5,'seis':6,'siete':7,'ocho':8,'nueve':9,'diez':10,'once':11,'doce':12,'quince':15,'veinte':20,'treinta':30},
+            'fr': {'un':1,'deux':2,'trois':3,'quatre':4,'cinq':5,'six':6,'sept':7,'huit':8,'neuf':9,'dix':10,'onze':11,'douze':12,'quinze':15,'vingt':20,'trente':30},
+            'de': {'ein':1,'eins':1,'zwei':2,'drei':3,'vier':4,'fünf':5,'sechs':6,'sieben':7,'acht':8,'neun':9,'zehn':10,'elf':11,'zwölf':12,'fünfzehn':15,'zwanzig':20,'dreißig':30}
+        };
+
+        // Replace written numbers with digits
+        if (numberWords[currentLang]) {
+            Object.keys(numberWords[currentLang]).forEach(word => {
+                const regex = new RegExp(`\\b${word}\\b`, 'gi');
+                cleanText = cleanText.replace(regex, numberWords[currentLang][word]);
+            });
+        }
+
+        // 1. First extract reps with keywords
         const repWords = t.keys_reps.join('|');
         const repRegex = new RegExp(`(\\d+)\\s*(${repWords})`, 'i');
         const repsMatch = cleanText.match(repRegex);
         
         if (repsMatch) {
             reps = repsMatch[1];
-            cleanText = cleanText.replace(repsMatch[0], ''); 
+            cleanText = cleanText.replace(repsMatch[0], '').trim(); 
         }
 
-        // 2. Dynamic Regex for Weight (e.g., "80 kg", "80 kilos")
+        // 2. Extract weight with keywords
         const weightWords = t.keys_weight.join('|');
         const weightRegex = new RegExp(`(\\d+)\\s*(${weightWords})`, 'i');
         const weightMatch = cleanText.match(weightRegex);
 
         if (weightMatch) {
             weight = weightMatch[1];
-            cleanText = cleanText.replace(weightMatch[0], '');
+            cleanText = cleanText.replace(weightMatch[0], '').trim();
         }
 
-        // 3. Heuristic for loose numbers
-        const remainingNumbers = cleanText.match(/(\d+(\.\d+)?)/g);
-        if (remainingNumbers) {
-            if (!weight && !reps && remainingNumbers.length >= 2) {
-                const n1 = parseFloat(remainingNumbers[0]);
-                const n2 = parseFloat(remainingNumbers[1]);
-                weight = Math.max(n1, n2);
-                reps = Math.min(n1, n2);
-                cleanText = cleanText.replace(remainingNumbers[0], '').replace(remainingNumbers[1], '');
-            } else if (!weight && remainingNumbers.length > 0) {
-                weight = remainingNumbers[0];
-                cleanText = cleanText.replace(weight, '');
+        // 3. Look for patterns like "5 x" or "x 5" (common rep notation)
+        if (!reps) {
+            const xPattern = cleanText.match(/(\d+)\s*x\b|x\s*(\d+)/i);
+            if (xPattern) {
+                reps = xPattern[1] || xPattern[2];
+                cleanText = cleanText.replace(xPattern[0], '').trim();
             }
         }
 
-        // 4. Clean up connector words (localized)
+        // 4. Check for standalone numbers
+        const numbers = [...cleanText.matchAll(/\b(\d+)\b/g)];
+        numbers.forEach(match => {
+            const num = match[1];
+            const numValue = parseInt(num);
+            
+            // If we don't have reps and the number is small, assume it's reps
+            if (!reps && numValue <= 30) {
+                reps = num;
+                cleanText = cleanText.replace(match[0], '').trim();
+            } 
+            // Otherwise if we don't have weight, assume it's weight
+            else if (!weight && numValue > 30) {
+                weight = num;
+                cleanText = cleanText.replace(match[0], '').trim();
+            }
+        });
+
+        // 5. Final check: if we only have one number and nothing else, it's probably reps
+        if (!reps && !weight) {
+            const lastNumber = cleanText.match(/\b(\d+)\b/);
+            if (lastNumber) {
+                reps = lastNumber[1];
+                cleanText = cleanText.replace(lastNumber[0], '').trim();
+            }
+        }
+
+        // 6. Clean up connector words (localized)
         let exerciseName = cleanText;
         const connectors = t.keys_connectors;
         connectors.forEach(word => {
-            // Remove whole words only
             const regex = new RegExp(`\\b${word}\\b`, 'gi');
-            exerciseName = exerciseName.replace(regex, '');
+            exerciseName = exerciseName.replace(regex, '').trim();
         });
 
-        // Cleanup special chars
-        exerciseName = exerciseName.replace(/[^a-zA-Z\u00C0-\u00FF\s]/g, '').trim(); // Allow accents
+        // Clean up special chars and extra spaces
+        exerciseName = exerciseName.replace(/[^a-zA-Z\u00C0-\u00FF\s]/g, '').trim();
+        exerciseName = exerciseName.replace(/\s+/g, ' ');
+        
         if(exerciseName.length > 0) {
             exerciseName = exerciseName.charAt(0).toUpperCase() + exerciseName.slice(1);
         }
 
+        // Fill in the fields
         if (exerciseName) document.getElementById('exerciseInput').value = exerciseName;
         if (weight) document.getElementById('weightInput').value = weight;
         if (reps) document.getElementById('repsInput').value = reps;
