@@ -487,7 +487,15 @@
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.getAttribute('data-i18n');
             if (translations[lang][key]) {
-                el.innerText = translations[lang][key];
+                // Special handling for mic button to preserve the span
+                if (el.id === 'micBtn') {
+                    const span = el.querySelector('span');
+                    if (span) {
+                        span.innerText = translations[lang][key];
+                    }
+                } else {
+                    el.innerText = translations[lang][key];
+                }
             }
         });
 
@@ -524,7 +532,6 @@
 
         recognition.onstart = () => {
             micBtn.classList.add('listening');
-            const icon = "🛑 " + translations[currentLang].mic_listening;
             // We manually update button text inside the span
             micBtn.querySelector('span').innerText = translations[currentLang].mic_listening;
         };
