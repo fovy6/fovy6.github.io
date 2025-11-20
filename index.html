@@ -567,13 +567,13 @@
         
         const t = translations[currentLang];
 
-        // Convert written numbers to digits (for common small numbers)
+        // Language-specific number words that speech recognition might return
         const numberWords = {
-            'en': {'one':1,'two':2,'three':3,'four':4,'five':5,'six':6,'seven':7,'eight':8,'nine':9,'ten':10,'eleven':11,'twelve':12,'fifteen':15,'twenty':20,'thirty':30},
-            'nl': {'een':1,'twee':2,'drie':3,'vier':4,'vijf':5,'zes':6,'zeven':7,'acht':8,'negen':9,'tien':10,'elf':11,'twaalf':12,'vijftien':15,'twintig':20,'dertig':30},
-            'es': {'uno':1,'dos':2,'tres':3,'cuatro':4,'cinco':5,'seis':6,'siete':7,'ocho':8,'nueve':9,'diez':10,'once':11,'doce':12,'quince':15,'veinte':20,'treinta':30},
-            'fr': {'un':1,'deux':2,'trois':3,'quatre':4,'cinq':5,'six':6,'sept':7,'huit':8,'neuf':9,'dix':10,'onze':11,'douze':12,'quinze':15,'vingt':20,'trente':30},
-            'de': {'ein':1,'eins':1,'zwei':2,'drei':3,'vier':4,'fünf':5,'sechs':6,'sieben':7,'acht':8,'neun':9,'zehn':10,'elf':11,'zwölf':12,'fünfzehn':15,'zwanzig':20,'dreißig':30}
+            'en': {'one':1,'two':2,'three':3,'four':4,'five':5,'six':6,'seven':7,'eight':8,'nine':9,'ten':10,'eleven':11,'twelve':12,'fifteen':15,'twenty':20,'thirty':30,'forty':40,'fifty':50},
+            'nl': {'een':1,'twee':2,'drie':3,'vier':4,'vijf':5,'zes':6,'zeven':7,'acht':8,'negen':9,'tien':10,'elf':11,'twaalf':12,'vijftien':15,'twintig':20,'dertig':30,'veertig':40,'vijftig':50},
+            'es': {'uno':1,'un':1,'dos':2,'tres':3,'cuatro':4,'cinco':5,'seis':6,'siete':7,'ocho':8,'nueve':9,'diez':10,'once':11,'doce':12,'quince':15,'veinte':20,'treinta':30,'cuarenta':40,'cincuenta':50},
+            'fr': {'un':1,'deux':2,'trois':3,'quatre':4,'cinq':5,'six':6,'sept':7,'huit':8,'neuf':9,'dix':10,'onze':11,'douze':12,'quinze':15,'vingt':20,'trente':30,'quarante':40,'cinquante':50},
+            'de': {'ein':1,'eins':1,'zwei':2,'drei':3,'vier':4,'fünf':5,'sechs':6,'sieben':7,'acht':8,'neun':9,'zehn':10,'elf':11,'zwölf':12,'fünfzehn':15,'zwanzig':20,'dreißig':30,'vierzig':40,'fünfzig':50}
         };
 
         // Replace written numbers with digits
@@ -584,54 +584,101 @@
             });
         }
 
-        // 1. First extract reps with keywords
-        const repWords = t.keys_reps.join('|');
-        const repRegex = new RegExp(`(\\d+)\\s*(${repWords})`, 'i');
-        const repsMatch = cleanText.match(repRegex);
-        
-        if (repsMatch) {
-            reps = repsMatch[1];
-            cleanText = cleanText.replace(repsMatch[0], '').trim(); 
-        }
-
-        // 2. Extract weight with keywords
-        const weightWords = t.keys_weight.join('|');
-        const weightRegex = new RegExp(`(\\d+)\\s*(${weightWords})`, 'i');
-        const weightMatch = cleanText.match(weightRegex);
-
-        if (weightMatch) {
-            weight = weightMatch[1];
-            cleanText = cleanText.replace(weightMatch[0], '').trim();
-        }
-
-        // 3. Look for patterns like "5 x" or "x 5" (common rep notation)
-        if (!reps) {
-            const xPattern = cleanText.match(/(\d+)\s*x\b|x\s*(\d+)/i);
-            if (xPattern) {
-                reps = xPattern[1] || xPattern[2];
-                cleanText = cleanText.replace(xPattern[0], '').trim();
+        // Language-specific parsing patterns
+        if (currentLang === 'nl') {
+            // Dutch: "5 keer", "5 herhalingen", "5 x"
+            const nlRepsPattern = cleanText.match(/(\d+)\s*(reps|keer|herhalingen?|x|maal)/i);
+            if (nlRepsPattern) {
+                reps = nlRepsPattern[1];
+                cleanText = cleanText.replace(nlRepsPattern[0], '').trim();
             }
-        }
-
-        // 4. Check for standalone numbers
-        const numbers = [...cleanText.matchAll(/\b(\d+)\b/g)];
-        numbers.forEach(match => {
-            const num = match[1];
-            const numValue = parseInt(num);
             
-            // If we don't have reps and the number is small, assume it's reps
-            if (!reps && numValue <= 30) {
-                reps = num;
-                cleanText = cleanText.replace(match[0], '').trim();
-            } 
-            // Otherwise if we don't have weight, assume it's weight
-            else if (!weight && numValue > 30) {
-                weight = num;
-                cleanText = cleanText.replace(match[0], '').trim();
+            // Dutch weight: "80 kilo", "80 kg"
+            const nlWeightPattern = cleanText.match(/(\d+)\s*(kg|kilo(?:gram)?s?)/i);
+            if (nlWeightPattern) {
+                weight = nlWeightPattern[1];
+                cleanText = cleanText.replace(nlWeightPattern[0], '').trim();
             }
-        });
+        } 
+        else if (currentLang === 'en') {
+            // English: "5 reps", "5 times", "5 x"
+            const enRepsPattern = cleanText.match(/(\d+)\s*(reps?|repetitions?|times?|x)/i);
+            if (enRepsPattern) {
+                reps = enRepsPattern[1];
+                cleanText = cleanText.replace(enRepsPattern[0], '').trim();
+            }
+            
+            // English weight: "80 kg", "80 pounds", "80 lbs"
+            const enWeightPattern = cleanText.match(/(\d+)\s*(kg|kilos?|pounds?|lbs?)/i);
+            if (enWeightPattern) {
+                weight = enWeightPattern[1];
+                cleanText = cleanText.replace(enWeightPattern[0], '').trim();
+            }
+        }
+        else if (currentLang === 'es') {
+            // Spanish: "5 repeticiones", "5 veces"
+            const esRepsPattern = cleanText.match(/(\d+)\s*(reps?|repeticiones?|veces|x)/i);
+            if (esRepsPattern) {
+                reps = esRepsPattern[1];
+                cleanText = cleanText.replace(esRepsPattern[0], '').trim();
+            }
+            
+            // Spanish weight
+            const esWeightPattern = cleanText.match(/(\d+)\s*(kg|kilos?|libras?)/i);
+            if (esWeightPattern) {
+                weight = esWeightPattern[1];
+                cleanText = cleanText.replace(esWeightPattern[0], '').trim();
+            }
+        }
+        else if (currentLang === 'fr') {
+            // French: "5 répétitions", "5 fois"
+            const frRepsPattern = cleanText.match(/(\d+)\s*(reps?|répétitions?|fois|x)/i);
+            if (frRepsPattern) {
+                reps = frRepsPattern[1];
+                cleanText = cleanText.replace(frRepsPattern[0], '').trim();
+            }
+            
+            // French weight
+            const frWeightPattern = cleanText.match(/(\d+)\s*(kg|kilos?|livres?)/i);
+            if (frWeightPattern) {
+                weight = frWeightPattern[1];
+                cleanText = cleanText.replace(frWeightPattern[0], '').trim();
+            }
+        }
+        else if (currentLang === 'de') {
+            // German: "5 Wiederholungen", "5 mal"
+            const deRepsPattern = cleanText.match(/(\d+)\s*(reps?|wiederholungen?|wdh|mal|x)/i);
+            if (deRepsPattern) {
+                reps = deRepsPattern[1];
+                cleanText = cleanText.replace(deRepsPattern[0], '').trim();
+            }
+            
+            // German weight
+            const deWeightPattern = cleanText.match(/(\d+)\s*(kg|kilos?|kilogramm?|pfund)/i);
+            if (deWeightPattern) {
+                weight = deWeightPattern[1];
+                cleanText = cleanText.replace(deWeightPattern[0], '').trim();
+            }
+        }
 
-        // 5. Final check: if we only have one number and nothing else, it's probably reps
+        // Fallback: Check for standalone numbers if nothing was found
+        if (!reps && !weight) {
+            const numbers = [...cleanText.matchAll(/\b(\d+)\b/g)];
+            numbers.forEach(match => {
+                const num = match[1];
+                const numValue = parseInt(num);
+                
+                if (!reps && numValue <= 30) {
+                    reps = num;
+                    cleanText = cleanText.replace(match[0], '').trim();
+                } else if (!weight && numValue > 30) {
+                    weight = num;
+                    cleanText = cleanText.replace(match[0], '').trim();
+                }
+            });
+        }
+
+        // If still only one number found, assume it's reps
         if (!reps && !weight) {
             const lastNumber = cleanText.match(/\b(\d+)\b/);
             if (lastNumber) {
@@ -640,7 +687,7 @@
             }
         }
 
-        // 6. Clean up connector words (localized)
+        // Clean up connector words (localized)
         let exerciseName = cleanText;
         const connectors = t.keys_connectors;
         connectors.forEach(word => {
